@@ -3,9 +3,12 @@ package mongo
 import (
 	"context"
 	"errors"
+	"github.com/ONSdigital/dp-content-api/models"
 	"github.com/ONSdigital/dp-healthcheck/healthcheck"
 	dpMongoHealth "github.com/ONSdigital/dp-mongodb/v2/health"
 	dpMongoDriver "github.com/ONSdigital/dp-mongodb/v2/mongodb"
+	"go.mongodb.org/mongo-driver/bson"
+	"time"
 )
 
 const (
@@ -76,4 +79,18 @@ func (m *Mongo) Close(ctx context.Context) error {
 // Checker is called by the health check library to check the health state of this mongoDB instance
 func (m *Mongo) Checker(ctx context.Context, state *healthcheck.CheckState) error {
 	return m.healthClient.Checker(ctx, state)
+}
+
+func (m *Mongo) UpsertContent(ctx context.Context, content *models.Content) error {
+
+	update := bson.M{
+		"$set": content,
+		"$setOnInsert": bson.M{
+			"last_updated": time.Now(),
+		},
+	}
+
+	_, err := m.Connection.C(m.ContentCollection).UpsertId(ctx, content.ID, update)
+
+	return err
 }

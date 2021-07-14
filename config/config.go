@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// Config represents service configuration for dp-collection-api
+// Config represents service configuration for dp-content-api
 type Config struct {
 	BindAddr                   string        `envconfig:"BIND_ADDR"`
 	GracefulShutdownTimeout    time.Duration `envconfig:"GRACEFUL_SHUTDOWN_TIMEOUT"`

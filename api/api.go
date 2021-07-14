@@ -22,7 +22,8 @@ func Setup(ctx context.Context, r *mux.Router, contentStore ContentStore) *API {
 		contentStore: contentStore,
 	}
 
-	//r.HandleFunc("/collections", api.AddCollectionHandler).Methods(http.MethodPost)
+	r.HandleFunc("/cms/{collection_id}/{url:.*}", api.AddContentHandler).Methods(http.MethodPost)
+	//r.HandleFunc("/collections", api.GetCollectionsHandler).Methods(http.MethodGet)
 	return api
 }
 
