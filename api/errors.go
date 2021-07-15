@@ -11,10 +11,12 @@ import (
 var (
 	// errors that should return a 400 status
 	badRequest = map[error]bool{
-		ErrUnableToParseJSON: true,
+		ErrUnableToParseJSON:          true,
+		ErrContentAlreadyBeingUpdated: true,
 	}
 
-	ErrUnableToParseJSON = errors.New("failed to parse json body")
+	ErrUnableToParseJSON          = errors.New("failed to parse json body")
+	ErrContentAlreadyBeingUpdated = errors.New("content for this url is already being updated")
 )
 
 func handleError(ctx context.Context, err error, w http.ResponseWriter, logData log.Data) {

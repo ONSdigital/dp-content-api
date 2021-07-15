@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/ONSdigital/dp-content-api/models"
+	"github.com/ONSdigital/dp-mongodb/v2/mongodb"
 	dphttp "github.com/ONSdigital/dp-net/http"
 	"github.com/ONSdigital/log.go/v2/log"
 	"github.com/gorilla/mux"
@@ -23,7 +24,15 @@ func (api *API) AddContentHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// fail if the URL with an unapproved status exists - only approved should exist?
+	_, err = api.contentStore.GetInProgressContentByURL(ctx, content.URL)
+	if err != nil && !mongodb.IsErrNoDocumentFound(err) {
+		handleError(ctx, err, w, logData)
+		return
+	}
+	if err == nil {
+		handleError(ctx, ErrContentAlreadyBeingUpdated, w, logData)
+		return
+	}
 
 	if err = api.contentStore.UpsertContent(ctx, content); err != nil {
 		handleError(ctx, err, w, logData)

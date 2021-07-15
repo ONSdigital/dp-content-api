@@ -10,4 +10,5 @@ import (
 // ContentStore defines the required methods from the data store of content
 type ContentStore interface {
 	UpsertContent(ctx context.Context, content *models.Content) error
+	GetInProgressContentByURL(ctx context.Context, url string) (*models.Content, error)
 }

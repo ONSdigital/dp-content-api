@@ -94,3 +94,21 @@ func (m *Mongo) UpsertContent(ctx context.Context, content *models.Content) erro
 
 	return err
 }
+
+// GetInProgressContentByURL retrieves content for the given URL that is not yet approved
+func (m *Mongo) GetInProgressContentByURL(ctx context.Context, url string) (*models.Content, error) {
+
+	// todo: add status to query, so only in progress content is retrieved
+
+	query := bson.D{{"url", url}}
+	result := &models.Content{}
+
+	err := m.Connection.
+		C(m.ContentCollection).
+		FindOne(ctx, query, result)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
