@@ -11,6 +11,7 @@ type Content struct {
 	CollectionID string     `bson:"collection_id,omitempty" json:"collection_id,omitempty"`
 	ContentType  string     `bson:"content_type,omitempty"  json:"content_type,omitempty"`
 	Content      string     `bson:"content,omitempty"       json:"content,omitempty"`
+	Approved     bool       `bson:"approved"                json:"approved"`
 	PublishDate  *time.Time `bson:"publish_date,omitempty"  json:"publish_date,omitempty"`
 	LastUpdated  time.Time  `bson:"last_updated,omitempty"  json:"-"`
 }

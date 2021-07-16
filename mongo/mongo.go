@@ -7,6 +7,8 @@ import (
 	"github.com/ONSdigital/dp-healthcheck/healthcheck"
 	dpMongoHealth "github.com/ONSdigital/dp-mongodb/v2/health"
 	dpMongoDriver "github.com/ONSdigital/dp-mongodb/v2/mongodb"
+	dprequest "github.com/ONSdigital/dp-net/request"
+	"github.com/ONSdigital/log.go/v2/log"
 	"go.mongodb.org/mongo-driver/bson"
 	"time"
 )
@@ -91,6 +93,39 @@ func (m *Mongo) UpsertContent(ctx context.Context, content *models.Content) erro
 	}
 
 	_, err := m.Connection.C(m.ContentCollection).UpsertId(ctx, content.ID, update)
+
+	return err
+}
+
+func (m *Mongo) PatchContent(ctx context.Context, url string, patches []dprequest.Patch) error {
+
+	query := bson.D{{"url", url}}
+
+	// create update query from updatedFilter and newly generated eTag
+	updates := bson.M{}
+
+	// iterate patches and add updates
+	for _, patch := range patches {
+		switch patch.Path {
+		case "publish_date":
+			updates["publish_date"] = patch.Value
+		case "approved":
+			updates["approved"] = patch.Value
+		case "content":
+			updates["content"] = patch.Value
+		}
+	}
+
+	update, err := dpMongoDriver.WithUpdates(bson.M{
+		"$set": updates,
+	})
+	if err != nil {
+		return err
+	}
+
+	result, err := m.Connection.C(m.ContentCollection).Update(ctx, query, update)
+
+	log.Info(ctx, "patched content", log.Data{"url": url, "result": result})
 
 	return err
 }

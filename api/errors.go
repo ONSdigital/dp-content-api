@@ -13,11 +13,17 @@ var (
 	badRequest = map[error]bool{
 		ErrUnableToParseJSON:        true,
 		ErrContentAlreadyInProgress: true,
+		ErrReadingBody:              true,
+		ErrParsingBody:              true,
+		ErrNoData:                   true,
 	}
 
 	ErrUnableToParseJSON         = errors.New("failed to parse json body")
 	ErrContentAlreadyInProgress  = errors.New("content for this url is already in progress")
 	ErrInProgressContentNotFound = errors.New("in progress content not found")
+	ErrReadingBody               = errors.New("failed to read message body")
+	ErrParsingBody               = errors.New("failed to parse json body")
+	ErrNoData                    = errors.New("missing data in body")
 )
 
 func handleError(ctx context.Context, err error, w http.ResponseWriter, logData log.Data) {

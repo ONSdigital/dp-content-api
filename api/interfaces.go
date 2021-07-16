@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"github.com/ONSdigital/dp-content-api/models"
+	dprequest "github.com/ONSdigital/dp-net/request"
 )
 
 //go:generate moq -out mock/contentstore.go -pkg mock . ContentStore
@@ -11,4 +12,5 @@ import (
 type ContentStore interface {
 	UpsertContent(ctx context.Context, content *models.Content) error
 	GetInProgressContentByURL(ctx context.Context, url string) (*models.Content, error)
+	PatchContent(ctx context.Context, url string, patches []dprequest.Patch) error
 }
