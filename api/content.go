@@ -66,7 +66,7 @@ func (api *API) GetCollectionContentHandler(w http.ResponseWriter, r *http.Reque
 		"url":           url,
 	}
 
-	content, err := api.contentStore.GetInProgressContentByURL(ctx, url)
+	content, err := api.contentStore.GetCollectionContentByURL(ctx, url, collectionID)
 	if err != nil {
 		// todo: do not check for mongo specific errors here - create a 'domain' error type to return from mongo package
 		if mongodb.IsErrNoDocumentFound(err) {
@@ -82,6 +82,41 @@ func (api *API) GetCollectionContentHandler(w http.ResponseWriter, r *http.Reque
 		// content is being edited in another collection
 		// return not found? or something more specific to suggest it's in another collection?
 		handleError(ctx, ErrInProgressContentNotFound, w, logData)
+		return
+	}
+
+	rawContent, err := base64.StdEncoding.DecodeString(content.Content)
+	if err != nil {
+		handleError(ctx, err, w, logData)
+		return
+	}
+
+	// todo: handle other content types - currently assumes JSON, but should set other content type headers as required
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	if _, err := w.Write(rawContent); err != nil {
+		handleError(ctx, err, w, logData)
+		return
+	}
+}
+
+func (api *API) GetPublishedContentHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	vars := mux.Vars(r)
+	url := "/" + vars["url"]
+
+	logData := log.Data{
+		"url": url,
+	}
+
+	content, err := api.contentStore.GetPublishedContentByURL(ctx, url)
+	if err != nil {
+		// todo: do not check for mongo specific errors here - create a 'domain' error type to return from mongo package
+		if mongodb.IsErrNoDocumentFound(err) {
+			handleError(ctx, err, w, logData)
+			return
+		}
+
+		handleError(ctx, err, w, logData)
 		return
 	}
 
@@ -118,7 +153,7 @@ func (api *API) PatchCollectionContentHandler(w http.ResponseWriter, r *http.Req
 	}
 	logData["patch_list"] = patches
 
-	err = api.contentStore.PatchContent(ctx, url, patches)
+	err = api.contentStore.PatchContent(ctx, url, collectionID, patches)
 	if err != nil {
 		handleError(ctx, err, w, logData)
 		return

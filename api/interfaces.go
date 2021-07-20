@@ -12,5 +12,7 @@ import (
 type ContentStore interface {
 	UpsertContent(ctx context.Context, content *models.Content) error
 	GetInProgressContentByURL(ctx context.Context, url string) (*models.Content, error)
-	PatchContent(ctx context.Context, url string, patches []dprequest.Patch) error
+	GetCollectionContentByURL(ctx context.Context, url, collectionID string) (*models.Content, error)
+	PatchContent(ctx context.Context, url, collectionID string, patches []dprequest.Patch) error
+	GetPublishedContentByURL(ctx context.Context, url string) (*models.Content, error)
 }

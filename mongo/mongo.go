@@ -3,6 +3,7 @@ package mongo
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/ONSdigital/dp-content-api/models"
 	"github.com/ONSdigital/dp-healthcheck/healthcheck"
 	dpMongoHealth "github.com/ONSdigital/dp-mongodb/v2/health"
@@ -10,6 +11,9 @@ import (
 	dprequest "github.com/ONSdigital/dp-net/request"
 	"github.com/ONSdigital/log.go/v2/log"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
+	"strconv"
 	"time"
 )
 
@@ -97,9 +101,12 @@ func (m *Mongo) UpsertContent(ctx context.Context, content *models.Content) erro
 	return err
 }
 
-func (m *Mongo) PatchContent(ctx context.Context, url string, patches []dprequest.Patch) error {
+func (m *Mongo) PatchContent(ctx context.Context, url, collectionID string, patches []dprequest.Patch) error {
 
-	query := bson.D{{"url", url}}
+	query := bson.D{
+		{"url", url},
+		{"collection_id", collectionID},
+	}
 
 	// create update query from updatedFilter and newly generated eTag
 	updates := bson.M{}
@@ -108,9 +115,17 @@ func (m *Mongo) PatchContent(ctx context.Context, url string, patches []dpreques
 	for _, patch := range patches {
 		switch patch.Path {
 		case "publish_date":
-			updates["publish_date"] = patch.Value
+			publishDate, err := time.Parse("2006-01-02T15:04:05.000Z", fmt.Sprintf("%v", patch.Value))
+			if err != nil {
+				return err
+			}
+			updates["publish_date"] = publishDate
 		case "approved":
-			updates["approved"] = patch.Value
+			approved, err := strconv.ParseBool(fmt.Sprintf("%v", patch.Value))
+			if err != nil {
+				return err
+			}
+			updates["approved"] = approved
 		case "content":
 			updates["content"] = patch.Value
 		}
@@ -133,9 +148,7 @@ func (m *Mongo) PatchContent(ctx context.Context, url string, patches []dpreques
 // GetInProgressContentByURL retrieves content for the given URL that is not yet approved
 func (m *Mongo) GetInProgressContentByURL(ctx context.Context, url string) (*models.Content, error) {
 
-	// todo: add status to query, so only in progress content is retrieved
-
-	query := bson.D{{"url", url}}
+	query := bson.D{{"url", url}, {"approved", false}}
 	result := &models.Content{}
 
 	err := m.Connection.
@@ -146,4 +159,53 @@ func (m *Mongo) GetInProgressContentByURL(ctx context.Context, url string) (*mod
 	}
 
 	return result, nil
+}
+
+// GetCollectionContentByURL retrieves content for the given URL that is within the given collection ID
+func (m *Mongo) GetCollectionContentByURL(ctx context.Context, url, collectionID string) (*models.Content, error) {
+
+	query := bson.D{{"url", url}, {"collection_id", collectionID}}
+	result := &models.Content{}
+
+	err := m.Connection.
+		C(m.ContentCollection).
+		FindOne(ctx, query, result)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+// GetPublishedContentByURL retrieves content for the given URL that is published
+func (m *Mongo) GetPublishedContentByURL(ctx context.Context, url string) (*models.Content, error) {
+
+	var q *dpMongoDriver.Find
+
+	// A primitive.DateTime is required so that the time is also included in the query.
+	// using time.now() directly would only use the date in the query, and ignore the time
+	now := primitive.NewDateTimeFromTime(time.Now())
+
+	query := bson.D{
+		{"url", url},
+		{"approved", true},
+		{"publish_date", bson.D{{"$lte", now}}},
+	}
+
+	q = m.Connection.
+		C(m.ContentCollection).
+		Find(query).
+		Sort(bson.D{{"publish_date", -1}})
+
+	values := []*models.Content{}
+	err := q.Limit(1).IterAll(ctx, &values)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(values) == 0 {
+		return nil, mongo.ErrNoDocuments
+	}
+
+	return values[0], nil
 }
