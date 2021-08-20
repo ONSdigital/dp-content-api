@@ -209,3 +209,40 @@ func (m *Mongo) GetPublishedContentByURL(ctx context.Context, url string) (*mode
 
 	return values[0], nil
 }
+
+func (m *Mongo) GetNextPublishDate(ctx context.Context, url string) (*time.Time, error) {
+
+	var q *dpMongoDriver.Find
+
+	// A primitive.DateTime is required so that the time is also included in the query.
+	// using time.now() directly would only use the date in the query, and ignore the time
+	now := primitive.NewDateTimeFromTime(time.Now())
+
+	query := bson.D{
+		{"url", url},
+		{"approved", true},
+		{"publish_date", bson.D{{"$gte", now}}},
+	}
+
+	q = m.Connection.
+		C(m.ContentCollection).
+		Find(query).
+		Sort(bson.D{{"publish_date", -1}})
+
+	values := []*models.Content{}
+	err := q.IterAll(ctx, &values)
+	if err != nil {
+		return nil, err
+	}
+
+	// if no value is found - there is no next publish date
+	if len(values) == 0 {
+		return nil, nil
+	}
+
+	if len(values) > 1 {
+		return nil, errors.New("there should not be more than one content item to be published")
+	}
+
+	return values[0].PublishDate, nil
+}

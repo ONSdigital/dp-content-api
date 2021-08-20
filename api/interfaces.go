@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/ONSdigital/dp-content-api/models"
 	dprequest "github.com/ONSdigital/dp-net/request"
+	"time"
 )
 
 //go:generate moq -out mock/contentstore.go -pkg mock . ContentStore
@@ -15,4 +16,5 @@ type ContentStore interface {
 	GetCollectionContentByURL(ctx context.Context, url, collectionID string) (*models.Content, error)
 	PatchContent(ctx context.Context, url, collectionID string, patches []dprequest.Patch) error
 	GetPublishedContentByURL(ctx context.Context, url string) (*models.Content, error)
+	GetNextPublishDate(ctx context.Context, url string) (*time.Time, error)
 }

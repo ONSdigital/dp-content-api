@@ -13,6 +13,8 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"strconv"
+	"time"
 )
 
 func (api *API) AddCollectionContentHandler(w http.ResponseWriter, r *http.Request) {
@@ -126,12 +128,46 @@ func (api *API) GetPublishedContentHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	maxAge, err := api.calculateTimeToCache(ctx, url, logData)
+	if err != nil {
+		handleError(ctx, err, w, logData)
+		return
+	}
+
+	w.Header().Set("cache-control", "public, max-age="+strconv.Itoa(maxAge))
+
 	// todo: handle other content types - currently assumes JSON, but should set other content type headers as required
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	if _, err := w.Write(rawContent); err != nil {
 		handleError(ctx, err, w, logData)
 		return
 	}
+}
+
+func (api *API) calculateTimeToCache(ctx context.Context, url string, logData log.Data) (int, error) {
+
+	// todo: move this default to config
+	defaultCacheTime := 600 // default cache time 10 minutes (600 seconds)
+
+	nextPublishDate, err := api.contentStore.GetNextPublishDate(ctx, url)
+	if err != nil {
+		return defaultCacheTime, err
+	}
+
+	if nextPublishDate == nil {
+		return defaultCacheTime, nil
+	}
+
+	secondsUntilPublish := int(nextPublishDate.Unix() - time.Now().Unix())
+	logData["next_publish_date"] = nextPublishDate
+	logData["seconds_until_publish"] = secondsUntilPublish
+	log.Info(ctx, "next publish date identified", logData)
+
+	if secondsUntilPublish < defaultCacheTime {
+		return secondsUntilPublish, nil
+	}
+
+	return defaultCacheTime, nil
 }
 
 func (api *API) PatchCollectionContentHandler(w http.ResponseWriter, r *http.Request) {

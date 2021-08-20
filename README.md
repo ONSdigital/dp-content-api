@@ -2,6 +2,24 @@ dp-content-api
 ================
 An API for ONS website content
 
+`POST  /cms/{collection_id}/{url}` - Add content for the given collection_id and URL
+
+`GET   /cms/{collection_id}/{url}` - Get content for the given collection_id and URL 
+
+`PATCH /cms/{collection_id}/{url}` - Update content for the given collection_id and URL
+
+`GET   /{url}` - Get the latest published content for the given URL
+
+### Caching
+
+When getting the latest published content for a page, a `Cache-Control` header is returned. 
+```
+Cache-Control: public, max-age=600
+```
+The `max-age` value represents how long the page can safely be cached for.
+If there is no publish due for the page, a default cache time is returned. 
+The cache time will decrease as a publish time approaches, so when the publish takes place the page will not be cached.
+
 ### Getting started
 
 * Run `make debug`
@@ -86,7 +104,7 @@ curl "localhost:26400/aboutus" | jq
 Post V2 content to a different collection. This time setting the approval flag and adding a publish date in the future
 ** update the publish time as required, but note that the time is in UTC, so may need to be put back an hour to account for BST **
 ```
-curl -d '{"name": "Coronavirus key indicators", "publish_date":"2021-07-20T13:04:00.000Z", "approved":true, "content_type": "static_landing_page", "content": "ewogICAidHlwZSI6InN0YXRpY19sYW5kaW5nX3BhZ2UiLAogICAibWFya2Rvd24iOiJWZXJzaW9uIDIiCn0="}' "localhost:26400/cms/LMSV2/aboutus" | jq
+curl -d '{"name": "Coronavirus key indicators", "publish_date":"2021-08-19T14:00:00.000Z", "approved":true, "content_type": "static_landing_page", "content": "ewogICAidHlwZSI6InN0YXRpY19sYW5kaW5nX3BhZ2UiLAogICAibWFya2Rvd24iOiJWZXJzaW9uIDIiCn0="}' "localhost:26400/cms/LMSV2/aboutus" | jq
 ```
 
 The V2 collection content can be retrieved/previewed by using the content endpoint with the collection ID
