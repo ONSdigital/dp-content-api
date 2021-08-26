@@ -21,33 +21,46 @@ func main() {
 		os.Exit(1)
 	}
 
-	processLine := func(s string) {
+	processLines := func(s []string) {
 		addContentToMongoDB(s, ctx, mongodb)
 	}
 
-	processFileLines(processLine)
+	processFileLines(processLines)
 }
 
-func addContentToMongoDB(s string, ctx context.Context, mongodb *mongo.Mongo) {
-	content := &models.Content{
-		URL:          s,
-		CollectionID: "coll-123",
-		ContentType:  "test",
-		Content:      "123",
-		Approved:     true,
-		PublishDate:  &time.Time{},
+func addContentToMongoDB(lines []string, ctx context.Context, mongodb *mongo.Mongo) {
+
+	now := time.Now()
+
+	var updates []interface{}
+
+	for _, line := range lines {
+		content := &models.Content{
+			URL:          line,
+			CollectionID: "coll-123",
+			ContentType:  "test",
+			Content:      "123",
+			Approved:     true,
+			PublishDate:  &now,
+		}
+		id, err := api.NewID()
+		if err != nil {
+			log.Error(ctx, "error initialising mongo", err)
+			os.Exit(1)
+		}
+
+		content.ID = id
+		updates = append(updates, content)
 	}
-	id, err := api.NewID()
+
+	_, err := mongodb.Connection.C(mongodb.ContentCollection).Insert(ctx, updates)
 	if err != nil {
-		log.Error(ctx, "error initialising mongo", err)
+		log.Error(ctx, "error inserting content into mongo", err)
 		os.Exit(1)
 	}
-
-	content.ID = id
-	mongodb.UpsertContent(ctx, content)
 }
 
-func processFileLines(processFunc func(string)) {
+func processFileLines(processFunc func([]string)) {
 
 	f, err := os.Open("cmd/data-seeder/onsurls.txt")
 	if err != nil {
@@ -57,10 +70,19 @@ func processFileLines(processFunc func(string)) {
 	defer f.Close()
 	s := bufio.NewScanner(f)
 
+	var lines []string
+	i := 0
+	batchSize := 100
+
 	for s.Scan() {
-		processFunc(s.Text())
-		//fmt.Println(s.Text())
+		lines = append(lines, s.Text())
+		i++
+		if i == batchSize {
+			processFunc(lines)
+			lines = []string{}
+		}
 	}
+	processFunc(lines)
 }
 
 func initMongo(ctx context.Context) (error, *mongo.Mongo) {
